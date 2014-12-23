@@ -1,10 +1,10 @@
 #include <nntlib/nntlib.hpp>
 
-#include <iomanip>
+#include <cmath>
+
 #include <iostream>
 
 constexpr std::size_t N = 10000;
-constexpr std::size_t P = 8;
 
 constexpr double pi() {
     return std::atan2(0, -1);
