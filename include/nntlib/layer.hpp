@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iterator>
 #include <random>
 
 
@@ -122,6 +123,46 @@ class fully_connected {
             }
             return netj;
         }
+};
+
+template <typename T = double, typename Rng = std::mt19937>
+class dropout {
+    public:
+        /* Weight matrix. Will be empty.
+         */
+        typedef std::vector<std::vector<T>> weights_t;
+
+        dropout(double probability, const Rng& rng_lvalue, T dropout_value = 0.0) : prob(probability), rng(rng_lvalue), dist(0.0, 1.0), value(dropout_value) {}
+        dropout(double probability, Rng&& rng_rvalue, T dropout_value = 0.0) : prob(probability), rng(std::move(rng_rvalue)), dist(0.0, 1.0), value(dropout_value) {}
+
+        dropout(const dropout& other) = default;
+        dropout(dropout&& other) = default;
+
+        dropout& operator=(const dropout& other) = default;
+        dropout& operator=(dropout&& other) = default;
+
+        template <typename InputIt>
+        std::vector<T> forward(InputIt x_first, InputIt x_last) const {
+            std::vector<T> output{};
+            std::transform(x_first, x_last, std::back_inserter(output), [&](T xi){
+                return dist(rng) >= prob ? xi : value;
+            });
+
+            return output;
+        }
+
+        template <typename InputIt>
+        std::pair<std::vector<T>, weights_t> backward(InputIt _x_first, InputIt _x_last, const std::vector<T>& prev_error) const {
+            return std::make_pair(prev_error, weights_t{});
+        }
+
+        void update(const weights_t& _delta) {/* noop */}
+
+    private:
+        mutable Rng rng;
+        double prob;
+        mutable std::uniform_real_distribution<double> dist;
+        T value;
 };
 
 }
