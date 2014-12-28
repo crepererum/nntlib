@@ -42,8 +42,8 @@ class batch {
                 typename Net::weights_t update;
                 std::size_t batchcounter = 0;
                 bool first_batch = true;
-                auto x_iter = x_first;
-                auto y_iter = y_first;
+                InputIt1 x_iter = x_first;
+                InputIt2 y_iter = y_first;
 
                 while ((x_iter != x_last) && (y_iter != y_last)) {
                     auto error_and_weights = net.backward(
