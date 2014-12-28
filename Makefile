@@ -8,7 +8,7 @@ all: examples doc
 
 examples: $(EXAMPLES)
 
-$(BUILDDIR)/examples/%: examples/%.cpp
+$(BUILDDIR)/examples/%: examples/%.cpp include/nntlib/*.hpp
 	mkdir -p $(BUILDDIR)/examples
 	$(CXX) $(CXXFLAGS) $< -o $@
 
