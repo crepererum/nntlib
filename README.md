@@ -35,7 +35,7 @@ To build the examples, use:
 
 To build the docs, use:
 
-    make docs
+    make doc
 
 ## Inspiration
 This work is inspired by:
