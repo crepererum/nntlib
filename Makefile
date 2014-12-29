@@ -2,6 +2,7 @@ BUILDDIR ?= target
 CLDOC ?= cldoc
 CXX ?= g++
 CXXFLAGS = -std=c++14 -Iinclude
+CXXFLAGS_EXTRA_EXAMPLES = -O2
 EXAMPLES = $(addprefix $(BUILDDIR)/, $(basename $(wildcard examples/*.cpp)))
 
 all: examples doc
@@ -10,7 +11,7 @@ examples: $(EXAMPLES)
 
 $(BUILDDIR)/examples/%: examples/%.cpp include/nntlib/*.hpp
 	mkdir -p $(BUILDDIR)/examples
-	$(CXX) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_EXTRA_EXAMPLES) $< -o $@
 
 doc: include/nntlib/*.hpp
 	mkdir -p $(BUILDDIR)
