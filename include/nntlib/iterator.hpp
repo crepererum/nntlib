@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 namespace nntlib {
@@ -116,6 +117,11 @@ class combine_container {
     public:
         combine_container() = default;
 
+        template <typename... Iters>
+        combine_container(Iters... iters) {
+            add_all<Iters...>::f(*this, iters...);
+        }
+
         combine_container(const combine_container& other) : helpers(combine_helper_vec_cpy(other.helpers)) {}
         combine_container(combine_container&& other) = default;
 
@@ -158,6 +164,24 @@ class combine_container {
 
     private:
         combine_helper_vec<T> helpers;
+
+        template <typename... Iters>
+        struct add_all {};
+
+        template <typename ItersHead, typename... ItersTail>
+        struct add_all<ItersHead, ItersTail...> {
+            static void f(combine_container& self, ItersHead head, ItersTail... tail) {
+                self.push_back(head);
+                add_all<ItersTail...>::f(tail...);
+            }
+        };
+
+        template <typename ItersLast>
+        struct add_all<ItersLast> {
+            static void f(combine_container& self, ItersLast last) {
+                self.push_back(last);
+            }
+        };
 };
 }
 
@@ -178,6 +202,11 @@ class combine_container {
 template <typename T>
 class combine {
     public:
+        /* Constructs new combined iterator and add all iterators to it.
+         */
+        template <typename... Iters>
+        combine(Iters... iters) : container(iters...) {}
+
         /* Adds new iterator to combined version.
          * @Iter Type of the iterator.
          */
@@ -264,6 +293,13 @@ struct transform {
         return this->iter != other.iter;
     }
 };
+
+/* Creates new transform iterator. See <transform> for details about parameter.
+ */
+template <typename Iter, typename Function, typename Target = decltype(std::declval<Function>()(*std::declval<Iter>()))>
+transform<Iter, Function, Target> make_transform(Iter i, Function f) {
+    return transform<Iter, Function, Target>(i, f);
+}
 
 }
 
