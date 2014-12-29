@@ -16,7 +16,7 @@ int main() {
     nntlib::layer::fully_connected<nntlib::activation::tanh<double>> l2(10, 30, rng);
     nntlib::layer::fully_connected<nntlib::activation::tanh<double>> l3(30, 1, rng);
 
-    nntlib::net<double, nntlib::loss::mse<double>, decltype(l1), decltype(l2), decltype(l3)> net(l1, l2, l3);
+    auto net = nntlib::make_net<double, nntlib::loss::mse<double>>(l1, l2, l3);
     std::uniform_real_distribution<double> dist(0, 1);
     std::vector<std::vector<double>> inputs(10);
 

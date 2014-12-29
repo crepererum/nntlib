@@ -96,5 +96,10 @@ class net<T, Loss, LayersHead, LayersTail...> {
         net<T, Loss, LayersTail...> tail;
 };
 
+template <typename T, typename Loss, typename... Layers>
+net<T, Loss, Layers...> make_net(Layers&... layers) {
+    return net<T, Loss, Layers...>(layers...);
+}
+
 }
 

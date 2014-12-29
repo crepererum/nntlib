@@ -10,18 +10,6 @@ constexpr double pi() {
     return std::atan2(0, -1);
 }
 
-void print_matrix(const std::vector<std::vector<double>>& matrix) {
-    std::cout << "[" << std::endl;
-    for (const auto& row : matrix) {
-        std::cout << "  [";
-        for (const auto& cell : row) {
-            std::cout << cell << ",";
-        }
-        std::cout << "]" << std::endl;
-    }
-    std::cout << "]" << std::endl;
-}
-
 int main() {
     std::random_device rd;
     std::mt19937 rng(rd());
@@ -30,7 +18,7 @@ int main() {
     nntlib::layer::fully_connected<nntlib::activation::tanh<double>> l2(30, 30, rng);
     nntlib::layer::fully_connected<nntlib::activation::tanh<double>> l3(30, 1, rng);
 
-    nntlib::net<double, nntlib::loss::mse<double>, decltype(l1), decltype(l2), decltype(l3)> net(l1, l2, l3);
+    auto net = nntlib::make_net<double, nntlib::loss::mse<double>>(l1, l2, l3);
     std::vector<std::vector<double>> input;
     std::vector<std::vector<double>> output;
     std::vector<std::size_t> indices;
