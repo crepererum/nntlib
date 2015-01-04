@@ -15,7 +15,7 @@ namespace utils {
 namespace _ {
 template <typename Tuple, typename Function, std::size_t N>
 struct tuple_apply_impl {
-    static void f(Tuple& tuple, Function func) {
+    static inline void f(Tuple& tuple, Function func) {
         func(std::get<N>(tuple));
         tuple_apply_impl<Tuple, Function, N - 1>::f(tuple, func);
     }
@@ -23,14 +23,14 @@ struct tuple_apply_impl {
 
 template <typename Tuple, typename Function>
 struct tuple_apply_impl<Tuple, Function, 0> {
-    static void f(Tuple& tuple, Function func) {
+    static inline void f(Tuple& tuple, Function func) {
         func(std::get<0>(tuple));
     }
 };
 
 template <typename Function, std::size_t N, typename... Tuples>
 struct tuple_join_impl {
-    static void f(Function func, Tuples&... tuples) {
+    static inline void f(Function func, Tuples&... tuples) {
         func(std::get<N>(tuples)...);
         tuple_join_impl<Function, N - 1, Tuples...>::f(func, tuples...);
     }
@@ -38,7 +38,7 @@ struct tuple_join_impl {
 
 template <typename Function, typename... Tuples>
 struct tuple_join_impl<Function, 0, Tuples...> {
-    static void f(Function func, Tuples&... tuples) {
+    static inline void f(Function func, Tuples&... tuples) {
         func(std::get<0>(tuples)...);
     }
 };
@@ -48,14 +48,14 @@ struct multi_foreach_impl_eq {};
 
 template <typename HeadCurrent, typename HeadEnd, typename... Tail>
 struct multi_foreach_impl_eq<HeadCurrent, HeadEnd, Tail...> {
-    static bool f(HeadCurrent head_current, HeadEnd head_end, Tail... tail) {
+    static inline bool f(HeadCurrent head_current, HeadEnd head_end, Tail... tail) {
         return (head_current != head_end) && multi_foreach_impl_eq<Tail...>::f(tail...);
     }
 };
 
 template <typename LastCurrent, typename LastEnd>
 struct multi_foreach_impl_eq<LastCurrent, LastEnd> {
-    static bool f(LastCurrent last_current, LastEnd last_end) {
+    static inline bool f(LastCurrent last_current, LastEnd last_end) {
         return last_current != last_end;
     }
 };
@@ -65,21 +65,21 @@ struct multi_foreach_impl_apply_strip;
 
 template <std::size_t N, typename Function, typename... Iters>
 struct multi_foreach_impl_apply {
-    static void f(Function function, Iters... iters) {
+    static inline void f(Function function, Iters... iters) {
         multi_foreach_impl_apply_strip<N, Function, Iters...>::f(function, iters...);
     }
 };
 
 template <typename Function, typename... Iters>
 struct multi_foreach_impl_apply<0, Function, Iters...> {
-    static void f(Function function, Iters... iters) {
+    static inline void f(Function function, Iters... iters) {
         function((*iters)...);
     }
 };
 
 template <std::size_t N, typename Function, typename HeadCurrent, typename HeadEnd, typename... Tail>
 struct multi_foreach_impl_apply_strip {
-    static void f(Function function, HeadCurrent head_current, HeadEnd _head_end, Tail... tail) {
+    static inline void f(Function function, HeadCurrent head_current, HeadEnd _head_end, Tail... tail) {
         multi_foreach_impl_apply<N - 2, Function, Tail..., HeadCurrent>::f(function, tail..., head_current);
     }
 };
@@ -89,7 +89,7 @@ struct multi_foreach_impl_incr {};
 
 template <typename HeadCurrent, typename HeadEnd, typename... Tail>
 struct multi_foreach_impl_incr<HeadCurrent, HeadEnd, Tail...> {
-    static void f(HeadCurrent& head_current, HeadEnd& _head_end, Tail&... tail) {
+    static inline void f(HeadCurrent& head_current, HeadEnd& _head_end, Tail&... tail) {
         ++head_current;
         multi_foreach_impl_incr<Tail...>::f(tail...);
     }
@@ -97,7 +97,7 @@ struct multi_foreach_impl_incr<HeadCurrent, HeadEnd, Tail...> {
 
 template <typename LastCurrent, typename LastEnd>
 struct multi_foreach_impl_incr<LastCurrent, LastEnd> {
-    static void f(LastCurrent& last_current, LastEnd& _last_end) {
+    static inline void f(LastCurrent& last_current, LastEnd& _last_end) {
         ++last_current;
     }
 };
