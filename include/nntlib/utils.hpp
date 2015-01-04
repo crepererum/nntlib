@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iterator>
 #include <tuple>
 
 
@@ -41,6 +42,66 @@ struct tuple_join_impl<Function, 0, Tuples...> {
         func(std::get<0>(tuples)...);
     }
 };
+
+template <typename... Iters>
+struct multi_foreach_impl_eq {};
+
+template <typename HeadCurrent, typename HeadEnd, typename... Tail>
+struct multi_foreach_impl_eq<HeadCurrent, HeadEnd, Tail...> {
+    static bool f(HeadCurrent head_current, HeadEnd head_end, Tail... tail) {
+        return (head_current != head_end) && multi_foreach_impl_eq<Tail...>::f(tail...);
+    }
+};
+
+template <typename LastCurrent, typename LastEnd>
+struct multi_foreach_impl_eq<LastCurrent, LastEnd> {
+    static bool f(LastCurrent last_current, LastEnd last_end) {
+        return last_current != last_end;
+    }
+};
+
+template <std::size_t N, typename Function, typename HeadCurrent, typename HeadEnd, typename... Tail>
+struct multi_foreach_impl_apply_strip;
+
+template <std::size_t N, typename Function, typename... Iters>
+struct multi_foreach_impl_apply {
+    static void f(Function function, Iters... iters) {
+        multi_foreach_impl_apply_strip<N, Function, Iters...>::f(function, iters...);
+    }
+};
+
+template <typename Function, typename... Iters>
+struct multi_foreach_impl_apply<0, Function, Iters...> {
+    static void f(Function function, Iters... iters) {
+        function((*iters)...);
+    }
+};
+
+template <std::size_t N, typename Function, typename HeadCurrent, typename HeadEnd, typename... Tail>
+struct multi_foreach_impl_apply_strip {
+    static void f(Function function, HeadCurrent head_current, HeadEnd _head_end, Tail... tail) {
+        multi_foreach_impl_apply<N - 2, Function, Tail..., HeadCurrent>::f(function, tail..., head_current);
+    }
+};
+
+template <typename... Iters>
+struct multi_foreach_impl_incr {};
+
+template <typename HeadCurrent, typename HeadEnd, typename... Tail>
+struct multi_foreach_impl_incr<HeadCurrent, HeadEnd, Tail...> {
+    static void f(HeadCurrent& head_current, HeadEnd& _head_end, Tail&... tail) {
+        ++head_current;
+        multi_foreach_impl_incr<Tail...>::f(tail...);
+    }
+};
+
+template <typename LastCurrent, typename LastEnd>
+struct multi_foreach_impl_incr<LastCurrent, LastEnd> {
+    static void f(LastCurrent& last_current, LastEnd& _last_end) {
+        ++last_current;
+    }
+};
+
 }
 
 /* Placeholder for implementation defined types.
@@ -80,6 +141,21 @@ void tuple_apply(Tuple& tuple, Function function) {
 template <typename Function, typename... Tuples>
 void tuple_join(Function function, Tuples&... tuples) {
     _::tuple_join_impl<Function, std::tuple_size<typename head_tail<Tuples...>::type_head>::value - 1, Tuples...>::f(function, tuples...);
+}
+
+template <typename Function, typename... Iters>
+void multi_foreach(Function function, Iters... iters) {
+    static_assert(sizeof...(Iters) % 2 == 0, "Provide first and last for all iterator streams!");
+
+    while (_::multi_foreach_impl_eq<Iters...>::f(iters...)) {
+        _::multi_foreach_impl_apply<sizeof...(Iters), Function, Iters...>::f(function, iters...);
+        _::multi_foreach_impl_incr<Iters...>::f(iters...);
+    }
+}
+
+template <typename Iter>
+void test(Iter& iter) {
+    ++iter;
 }
 
 }

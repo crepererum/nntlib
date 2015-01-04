@@ -77,27 +77,11 @@ class batch {
                     } else {
                         // no => add gradient to update
                         nntlib::utils::tuple_join([](auto& lhs, auto& rhs){
-                            auto first1 = lhs.begin();
-                            auto last1 = lhs.end();
-                            auto first2 = rhs.begin();
-                            auto last2 = rhs.end();
-
-                            while ((first1 != last1) && (first2 != last2)) {
-                                auto inner_first1 = first1->begin();
-                                auto inner_last1 = first1->end();
-                                auto inner_first2 = first2->begin();
-                                auto inner_last2 = first2->end();
-
-                                while ((inner_first1 != inner_last1) && (inner_first2 != inner_last2)) {
-                                    (*inner_first1) += *inner_first2;
-
-                                    ++inner_first1;
-                                    ++inner_first2;
-                                }
-
-                                ++first1;
-                                ++first2;
-                            }
+                            nntlib::utils::multi_foreach([](auto& lhs2, auto& rhs2){
+                                nntlib::utils::multi_foreach([](auto& lhs3, auto& rhs3){
+                                    lhs3 += rhs3;
+                                }, lhs2.begin(), lhs2.end(), rhs2.begin(), rhs2.end());
+                            }, lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
                         }, update, gradients);
                     }
                     batchcounter = (batchcounter + 1) % bsize;
@@ -128,33 +112,17 @@ class batch {
             if (l2_factor > 0.0) {
                 auto weights = net.get_weights();
                 nntlib::utils::tuple_join([&](auto& lhs, auto& rhs){
-                    auto first1 = lhs.begin();
-                    auto last1 = lhs.end();
-                    auto first2 = rhs.begin();
-                    auto last2 = rhs.end();
-
-                    while ((first1 != last1) && (first2 != last2)) {
-                        auto inner_first1 = first1->begin();
-                        auto inner_last1 = first1->end();
-                        auto inner_first2 = first2->begin();
-                        auto inner_last2 = first2->end();
+                    nntlib::utils::multi_foreach([&](auto& lhs2, auto& rhs2){
                         bool first = true;
-
-                        while ((inner_first1 != inner_last1) && (inner_first2 != inner_last2)) {
+                        nntlib::utils::multi_foreach([&](auto& lhs3, auto& rhs3){
                             // skip first weight (= bias value)
                             if (first) {
                                 first = false;
                             } else {
-                                (*inner_first1) -= *inner_first2 * l2_factor / n;
+                                lhs3 -= rhs3 * l2_factor / n;
                             }
-
-                            ++inner_first1;
-                            ++inner_first2;
-                        }
-
-                        ++first1;
-                        ++first2;
-                    }
+                        }, lhs2.begin(), lhs2.end(), rhs2.begin(), rhs2.end());
+                    }, lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
                 }, update, weights);
             }
 
