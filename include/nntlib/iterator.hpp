@@ -16,6 +16,7 @@ namespace _ {
 template <typename T>
 class combine_helper_base {
     public:
+        virtual ~combine_helper_base() = default;
         virtual void incr() = 0;
         virtual T deref() = 0;
         virtual bool eq(const std::unique_ptr<combine_helper_base<T>>& other) const = 0;
@@ -202,6 +203,12 @@ class combine_container {
 template <typename T>
 class combine {
     public:
+        typedef std::input_iterator_tag iterator_category;
+        typedef std::size_t difference_type;
+        typedef _::combine_container<T> value_type;
+        typedef value_type* pointer;
+        typedef value_type& reference;
+
         /* Constructs new combined iterator and add all iterators to it.
          */
         template <typename... Iters>
@@ -261,6 +268,12 @@ template <typename Iter, typename Function, typename Target>
 struct transform {
     Iter iter;
     Function function;
+
+    typedef std::input_iterator_tag iterator_category;
+    typedef std::size_t difference_type;
+    typedef Target value_type;
+    typedef Target pointer;
+    typedef Target reference;
 
     /* Creates new transform iterator using a underlying iterator and a function.
      * @i Iterator copy.

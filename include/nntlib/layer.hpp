@@ -57,7 +57,7 @@ class fully_connected {
 
         template <typename InputIt>
         std::pair<std::vector<T>, weights_t> backward(InputIt x_first, InputIt x_last, const std::vector<T>& prev_error) const {
-            weights_t delta;
+            weights_t gradient;
             std::vector<T> error(weights[0].size() - 1);
 
             for (std::size_t j = 0; j < weights.size(); ++j) {
@@ -65,20 +65,20 @@ class fully_connected {
                 T doj_dnetj = Activation::df(calc_netj(x_first, x_last, weights[j]));
                 T dj = de_doj * doj_dnetj;
 
-                std::vector<T> deltaj(weights[j].size());
-                deltaj[0] = -dj;
-                std::transform(x_first, x_last, std::next(deltaj.begin()), [&](T xi){
-                    return -dj * xi;
+                std::vector<T> gradientj(weights[j].size());
+                gradientj[0] = dj;
+                std::transform(x_first, x_last, std::next(gradientj.begin()), [&](T xi){
+                    return dj * xi;
                 });
 
-                delta.emplace_back(std::move(deltaj));
+                gradient.emplace_back(std::move(gradientj));
 
                 for (std::size_t i = 0; i < error.size(); ++i) {
                     error[i] += dj * weights[j][i + 1];
                 }
             }
 
-            return std::make_pair(std::move(error), std::move(delta));
+            return std::make_pair(std::move(error), std::move(gradient));
         }
 
         /* Update layer using a delta.
@@ -108,6 +108,10 @@ class fully_connected {
                 ++it1;
                 ++it2;
             }
+        }
+
+        const weights_t& get_weights() const {
+            return weights;
         }
 
     private:
@@ -157,6 +161,10 @@ class dropout {
         }
 
         void update(const weights_t& _delta) {/* noop */}
+
+        weights_t get_weights() const {
+            return {};
+        }
 
     private:
         mutable Rng rng;

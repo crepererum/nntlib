@@ -15,14 +15,13 @@ Currently, nntlib offers the following features:
  - layers:
    - fully connected layer
    - dropout layer
- - simple batch oriented training based on stochastic gradient descent
+ - simple batch oriented training based on stochastic gradient descent (optional L2 regularization)
  - iterator adaptors to avoid copying of data during preparation (e.g. training set generation)
 
 The following features are missing:
 
  - convolutional layers (unlikely to get implemented because I don't need those)
  - better training methods
- - L2 regularization for stochastic gradient descent
  - multi-threading
  - tests
 

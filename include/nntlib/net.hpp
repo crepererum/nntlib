@@ -60,6 +60,10 @@ class net<T, Loss, LayersLast> {
             last.update(std::get<N>(weights));
         }
 
+        auto get_weights() const {
+            return std::make_tuple(last.get_weights());
+        }
+
     private:
         LayersLast& last;
 };
@@ -89,6 +93,10 @@ class net<T, Loss, LayersHead, LayersTail...> {
         void update(const Tuple& weights) {
             head.update(std::get<N>(weights));
             tail.template update<Tuple, N + 1>(weights);
+        }
+
+        auto get_weights() const {
+            return std::tuple_cat(std::make_tuple(head.get_weights()), tail.get_weights());
         }
 
     private:
