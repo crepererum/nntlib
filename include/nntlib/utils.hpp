@@ -153,11 +153,6 @@ void multi_foreach(Function function, Iters... iters) {
     }
 }
 
-template <typename Iter>
-void test(Iter& iter) {
-    ++iter;
-}
-
 }
 }
 
