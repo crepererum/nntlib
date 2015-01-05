@@ -1,5 +1,7 @@
 #pragma once
 
+#include "utils.hpp"
+
 #include <algorithm>
 #include <functional>
 #include <iterator>
@@ -85,29 +87,11 @@ class fully_connected {
          * @delta Delta matrix, should be premultiplied with learning rate.
          */
         void update(const weights_t& delta) {
-            auto it1 = weights.begin();
-            auto it2 = delta.begin();
-            auto end1 = weights.end();
-            auto end2 = delta.end();
-
-            while ((it1 != end1) && (it2 != end2)) {
-                auto& wj1 = *it1;
-                const auto& wj2 = *it2;
-                auto inner_it1 = wj1.begin();
-                auto inner_it2 = wj2.begin();
-                auto inner_end1 = wj1.end();
-                auto inner_end2 = wj2.end();
-
-                while((inner_it1 != inner_end1) && (inner_it2 != inner_end2)) {
-                    (*inner_it1) += (*inner_it2);
-
-                    ++inner_it1;
-                    ++inner_it2;
-                }
-
-                ++it1;
-                ++it2;
-            }
+            nntlib::utils::multi_foreach([](auto& wj1, const auto& wj2){
+                nntlib::utils::multi_foreach([](auto& wji1, const auto& wji2){
+                    wji1 += wji2;
+                }, wj1.begin(), wj1.end(), wj2.begin(), wj2.end());
+            }, weights.begin(), weights.end(), delta.begin(), delta.end());
         }
 
         const weights_t& get_weights() const {
