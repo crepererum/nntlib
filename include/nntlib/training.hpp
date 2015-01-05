@@ -16,6 +16,7 @@ class batch {
     public:
         typedef std::function<T(std::size_t)> func_factor_t;
         typedef std::function<void(std::size_t)> func_callback_round_t;
+        typedef std::function<void()> func_callback_batch_t;
 
         static func_factor_t func_factor_const(T factor) {
             return [factor](std::size_t _i) -> T {
@@ -29,7 +30,7 @@ class batch {
             };
         }
 
-        batch(func_factor_t func_factor, std::size_t batch_size, std::size_t n_rounds, T l2 = 0.0) : ffactor(func_factor), fround([](std::size_t _r){}), bsize(batch_size), rounds(n_rounds), l2_factor(l2) {}
+        batch(func_factor_t func_factor, std::size_t batch_size, std::size_t n_rounds, T l2 = 0.0) : ffactor(func_factor), fround([](std::size_t _r){}), fbatch([](){}), bsize(batch_size), rounds(n_rounds), l2_factor(l2) {}
 
         void callback_round(func_callback_round_t callback) {
             fround = callback;
@@ -70,9 +71,13 @@ class batch {
                         // yes => reinit update vector
                         if (!first_batch) {
                             update_with_l2(net, update, n);
+
+                            // call batch callback
+                            fbatch();
                         } else {
                             first_batch = false;
                         }
+
                         update = gradients;
                     } else {
                         // no => add gradient to update
@@ -103,6 +108,7 @@ class batch {
     private:
         func_factor_t ffactor;
         func_callback_round_t fround;
+        func_callback_batch_t fbatch;
         std::size_t bsize;
         std::size_t rounds;
         T l2_factor;
