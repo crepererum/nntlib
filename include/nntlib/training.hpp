@@ -41,8 +41,8 @@ class batch {
             std::size_t n = static_cast<std::size_t>(std::distance(x_first, x_last));
 
             for (std::size_t round = 0; round < rounds; ++round) {
-                T factor = ffactor(round);
-                typename Net::weights_t update;
+                T round_factor = ffactor(round);
+                typename Net::weights_t gradients_sum;
                 std::size_t batchcounter = 0;
                 bool first_batch = true;
                 InputIt1 x_iter = x_first;
@@ -57,20 +57,11 @@ class batch {
                     );
                     auto& gradients = error_and_gradients.second;
 
-                    // multiple gradients with learning rate AND mutliply by -1 (opposite direction)
-                    nntlib::utils::tuple_apply(gradients, [factor](auto& w){
-                        for (auto& wj : w) {
-                            for (auto& wji : wj) {
-                                wji *= -factor;
-                            }
-                        }
-                    });
-
                     // should we update? (= end of batch)
                     if (batchcounter == 0) {
                         // yes => reinit update vector
                         if (!first_batch) {
-                            update_with_l2(net, update, n);
+                            prepare_and_commit_update(net, gradients_sum, n, round_factor, bsize);
 
                             // call batch callback
                             fbatch();
@@ -78,7 +69,7 @@ class batch {
                             first_batch = false;
                         }
 
-                        update = gradients;
+                        gradients_sum = gradients;
                     } else {
                         // no => add gradient to update
                         nntlib::utils::tuple_join([](auto& lhs, auto& rhs){
@@ -87,7 +78,7 @@ class batch {
                                     lhs3 += rhs3;
                                 }, lhs2.begin(), lhs2.end(), rhs2.begin(), rhs2.end());
                             }, lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
-                        }, update, gradients);
+                        }, gradients_sum, gradients);
                     }
                     batchcounter = (batchcounter + 1) % bsize;
 
@@ -97,7 +88,8 @@ class batch {
 
                 // also commit last partial batch
                 if (batchcounter != 0) {
-                    update_with_l2(net, update, n);
+                    // also use bsize here to avoid over-rating of the remaining samples
+                    prepare_and_commit_update(net, gradients_sum, n, round_factor, bsize);
                 }
 
                 // call round callback
@@ -114,7 +106,17 @@ class batch {
         T l2_factor;
 
         template <typename Net>
-        void update_with_l2(Net& net, typename Net::weights_t& update, std::size_t n) {
+        void prepare_and_commit_update(Net& net, typename Net::weights_t& gradients_sum, std::size_t n, T round_factor, std::size_t batch_size) {
+            // multiple gradients with learning rate AND mutliply by -1 (opposite direction)
+            nntlib::utils::tuple_apply(gradients_sum, [round_factor, batch_size](auto& w){
+                for (auto& wj : w) {
+                    for (auto& wji : wj) {
+                        wji *= -round_factor / batch_size;
+                    }
+                }
+            });
+
+            // optional l2 regularization
             if (l2_factor > 0.0) {
                 auto weights = net.get_weights();
                 nntlib::utils::tuple_join([&](auto& lhs, auto& rhs){
@@ -129,10 +131,11 @@ class batch {
                             }
                         }, lhs2.begin(), lhs2.end(), rhs2.begin(), rhs2.end());
                     }, lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
-                }, update, weights);
+                }, gradients_sum, weights);
             }
 
-            net.update(update);
+            // finally update the net
+            net.update(gradients_sum);
         }
 };
 
