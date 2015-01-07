@@ -263,35 +263,83 @@ class combine {
  * @Iter source iterator.
  * @Function function that maps *iter -> Target:
  * @Target return type of the function.
+ * @CleanupPointers if Function returns pointers, should we delete them?
  */
-template <typename Iter, typename Function, typename Target>
+template <typename Iter, typename Function, typename Target, bool CleanupPointers = false>
 struct transform {
+    static_assert(!std::is_reference<Target>::value && !std::is_pointer<Target>::value, "Target must not be a reference or pointer!");
+
     Iter iter;
     Function function;
+    Target* current;
 
+    typedef decltype(std::declval<Function>()(*std::declval<Iter>())) fresult_t;
     typedef std::input_iterator_tag iterator_category;
     typedef std::size_t difference_type;
     typedef Target value_type;
-    typedef Target pointer;
-    typedef Target reference;
+    typedef Target* pointer;
+    typedef Target& reference;
 
     /* Creates new transform iterator using a underlying iterator and a function.
      * @i Iterator copy.
      * @f Funciton copy.
      */
-    transform(Iter i, Function f) : iter(i), function(f) {}
+    transform(Iter i, Function f) : iter(i), function(f), current(nullptr) {}
+
+    transform(const transform& other) : iter(other.iter), function(other.function), current(nullptr) {}
+    transform(transform&& other) : iter(other.iter), function(other.function), current(other.current) {
+        other.current = nullptr;
+    }
+
+    ~transform() {
+        if (current) {
+            cleanup<fresult_t, CleanupPointers>();
+        }
+    }
+
+    transform& operator=(const transform& other) {
+        iter = other.iter;
+        function = other.function;
+        current = nullptr;
+        return *this;
+    }
+
+    transform& operator=(transform&& other) {
+        iter = other.iter;
+        function = other.function;
+        current = other.current;
+
+        other.current = nullptr;
+
+        return *this;
+    }
 
     /* Increments underlying iterator.
      */
     transform& operator++() {
+        current = nullptr;
+
         ++iter;
+
         return *this;
     }
 
     /* Call iter.operator* and converts the result using the stored function.
      */
-    Target operator*() {
-        return function(*iter);
+    reference operator*() {
+        if (!current) {
+            update_current<fresult_t>();
+        }
+        return *current;
+    }
+
+    /* Call iter.operator* and converts the result using the stored function.
+     */
+    pointer operator->() {
+        if (!current) {
+            update_current<fresult_t>();
+        }
+        return current;
     }
 
     /* Returns true iff underlying iterators are equal.
@@ -305,13 +353,66 @@ struct transform {
     bool operator!=(const transform& other) const {
         return this->iter != other.iter;
     }
+
+    template <typename F>
+    typename std::enable_if<std::is_pointer<F>::value>::type
+    update_current() {
+        current = function(*iter);
+    }
+
+    template <typename F>
+    typename std::enable_if<std::is_reference<F>::value>::type
+    update_current() {
+        current = &function(*iter);
+    }
+
+    template <typename F>
+    typename std::enable_if<!std::is_pointer<F>::value && !std::is_reference<F>::value>::type
+    update_current() {
+        current = new Target(function(*iter));
+    }
+
+    template <typename F, bool P>
+    typename std::enable_if<std::is_pointer<F>::value && P>::type
+    cleanup() {
+        delete current;
+        current = nullptr;
+    }
+
+    template <typename F, bool P>
+    typename std::enable_if<std::is_pointer<F>::value && !P>::type
+    cleanup() {
+        current = nullptr;
+    }
+
+    template <typename F, bool P>
+    typename std::enable_if<std::is_reference<F>::value>::type
+    cleanup() {
+        current = nullptr;
+    }
+
+    template <typename F, bool P>
+    typename std::enable_if<!std::is_pointer<F>::value && !std::is_reference<F>::value>::type
+    cleanup() {
+        delete current;
+        current = nullptr;
+    }
 };
 
 /* Creates new transform iterator. See <transform> for details about parameter.
  */
-template <typename Iter, typename Function, typename Target = decltype(std::declval<Function>()(*std::declval<Iter>()))>
-transform<Iter, Function, Target> make_transform(Iter i, Function f) {
-    return transform<Iter, Function, Target>(i, f);
+template <
+    typename Iter,
+    typename Function,
+    typename Target = typename std::remove_pointer<
+            typename std::remove_reference<
+                    decltype(std::declval<Function>()(*std::declval<Iter>()))
+                >::type
+        >::type,
+    bool CleanupPointers = false
+>
+transform<Iter, Function, Target, CleanupPointers> make_transform(Iter i, Function f) {
+    return transform<Iter, Function, Target, CleanupPointers>(i, f);
 }
 
 }
