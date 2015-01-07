@@ -1,7 +1,7 @@
 BUILDDIR ?= target
 CLDOC ?= cldoc
 CXX ?= g++
-CXXFLAGS = -std=c++14 -Iinclude -Iextern/etl/include
+CXXFLAGS = -std=c++14 -Iinclude
 CXXFLAGS_EXTRA_EXAMPLES = -O2
 EXAMPLES = $(addprefix $(BUILDDIR)/, $(basename $(wildcard examples/*.cpp)))
 

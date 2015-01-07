@@ -1,3 +1,0 @@
-[submodule "extern/etl"]
-	path = extern/etl
-	url = https://github.com/wichtounet/etl.git

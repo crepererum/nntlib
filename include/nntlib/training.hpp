@@ -2,8 +2,7 @@
 
 #include "utils.hpp"
 
-#include <etl/etl.hpp>
-#include <etl/multiplication.hpp>
+#include <eigen3/Eigen/Core>
 
 #include <cmath>
 
@@ -190,8 +189,8 @@ class lbfgs : public _::batch_template<T> {
         template <typename Net, typename InputIt1, typename InputIt2>
         void train(Net& net, InputIt1 x_first, InputIt1 x_last, InputIt2 y_first, InputIt2 y_last) {
             nround = 0;
-            std::unique_ptr<etl::dyn_matrix<T, 2>> update_last;
-            std::unique_ptr<etl::dyn_matrix<T, 2>> weights_last;
+            matrix_t update_last;
+            matrix_t weights_last;
             bool first = true;
             std::list<history_entry> history;
 
@@ -202,23 +201,21 @@ class lbfgs : public _::batch_template<T> {
                 if (first) {
                     first = false;
                 } else {
-                    history.emplace_back(*weights_current - *weights_last, *update_current - *update_last);
+                    history.emplace_back(weights_current - weights_last, update_current - update_last);
                 }
 
-                etl::dyn_matrix<T> id = gen_id(update_current->size());
-                etl::dyn_matrix<T> bk = id;
+                matrix_t id = gen_id(update_current.rows());
+                matrix_t bk = id;
                 for (const auto& entry : history) {
-                    T norm = etl::mmul(transpose(entry.yk), entry.sk)[0];
-                    bk = etl::mmul(
-                            etl::mmul(
-                                (id - etl::mmul(entry.sk, transpose(entry.yk)) / norm),
-                                bk
-                            ),
-                            (id - etl::mmul(entry.yk, transpose(entry.sk)) / norm)
-                        ) + etl::mmul(entry.sk, transpose(entry.sk)) / norm;
+                    T norm = (entry.yk.transpose() * entry.sk)(0, 0);
+
+                    bk = (id - (entry.sk * entry.yk.transpose()) / norm)
+                        *  bk
+                        * (id - (entry.yk * entry.sk.transpose()) / norm)
+                        + (entry.sk * entry.sk.transpose()) / norm;
                 }
 
-                vector2update<typename Net::weights_t>(update, etl::mmul(bk, *update_current));
+                vector2update<typename Net::weights_t>(update, bk * update_current);
 
                 while (history.size() > histsize) {
                     history.pop_front();
@@ -231,13 +228,15 @@ class lbfgs : public _::batch_template<T> {
         }
 
     private:
+        typedef typename Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> matrix_t;
+
         func_factor_t ffactor;
         func_callback_round_t fround;
         std::size_t histsize;
         std::size_t nround;
 
         template <typename Weights>
-        std::unique_ptr<etl::dyn_matrix<T, 2>> update2vector(const Weights& weights, T factor) {
+        matrix_t update2vector(const Weights& weights, T factor) {
             std::vector<T> vector;
             nntlib::utils::tuple_apply(weights, [&](const auto& part){
                 for (const auto& x : part) {
@@ -246,29 +245,29 @@ class lbfgs : public _::batch_template<T> {
                     }
                 }
             });
-            std::unique_ptr<etl::dyn_matrix<T, 2>> result(new etl::dyn_matrix<T, 2>(vector.size(), static_cast<std::size_t>(1)));
+            matrix_t result(vector.size(), 1);
             for (std::size_t i = 0; i < vector.size(); ++i) {
-                (*result)[i] = vector[i];
+                result(i, 0) = vector[i];
             }
             return result;
         }
 
         template <typename Weights>
-        Weights vector2update(Weights& update, const etl::dyn_matrix<T, 2>& vector) {
+        Weights vector2update(Weights& update, const matrix_t& vector) {
             std::size_t pos = 0;
             T factor = -ffactor(nround);
             nntlib::utils::tuple_apply(update, [&](auto& part){
                 for (auto& x : part) {
                     for (T& y : x) {
-                        y = vector[pos++] * factor;
+                        y = vector(pos++, 0) * factor;
                     }
                 }
             });
             return update;
         }
 
-        etl::dyn_matrix<T, 2> gen_id(std::size_t size) {
-            etl::dyn_matrix<T, 2> id(size, size);
+        matrix_t gen_id(std::size_t size) {
+            matrix_t id(size, size);
             for (std::size_t i = 0; i < size; ++i) {
                 for (std::size_t j = 0; j < size; ++j) {
                     id(i, j) = (i == j) ? 1.0 : 0.0;
@@ -278,10 +277,10 @@ class lbfgs : public _::batch_template<T> {
         }
 
         struct history_entry {
-            etl::dyn_matrix<T, 2> sk;
-            etl::dyn_matrix<T, 2> yk;
+            matrix_t sk;
+            matrix_t yk;
 
-            history_entry(etl::dyn_matrix<T, 2>&& sk_move, etl::dyn_matrix<T, 2>&& yk_move) : sk(std::move(sk_move)), yk(std::move(yk_move)) {}
+            history_entry(matrix_t&& sk_move, matrix_t&& yk_move) : sk(std::move(sk_move)), yk(std::move(yk_move)) {}
         };
 };
 
