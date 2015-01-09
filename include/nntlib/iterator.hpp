@@ -18,7 +18,7 @@ class combine_helper_base {
     public:
         virtual ~combine_helper_base() = default;
         virtual void incr() = 0;
-        virtual T deref() = 0;
+        virtual T& deref() = 0;
         virtual bool eq(const std::unique_ptr<combine_helper_base<T>>& other) const = 0;
         virtual std::unique_ptr<combine_helper_base<T>> copy() const = 0;
 };
@@ -32,7 +32,7 @@ class combine_helper : public combine_helper_base<T> {
             ++it;
         }
 
-        virtual T deref() override {
+        virtual T& deref() override {
             return *it;
         }
 
@@ -84,12 +84,12 @@ class combine_mapper {
             return *this;
         }
 
-        T operator*() {
+        T& operator*() {
             return helpers[pos]->deref();
         }
 
-        T operator->() {
-            return helpers[pos]->deref();
+        T* operator->() {
+            return &(helpers[pos]->deref());
         }
 
         bool operator==(const combine_mapper& other) const {
@@ -131,12 +131,16 @@ class combine_container {
         }
         combine_container& operator=(combine_container<T>&& other) = default;
 
-        combine_mapper<T> begin() {
+        combine_mapper<T> begin() const {
             return combine_mapper<T>(combine_helper_vec_cpy(helpers), 0);
         }
 
-        combine_mapper<T> end() {
+        combine_mapper<T> end() const {
             return combine_mapper<T>({}, 0);
+        }
+
+        T& operator[](std::size_t i) const {
+            return helpers[i]->deref();
         }
 
         template <typename Iter>
