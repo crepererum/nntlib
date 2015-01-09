@@ -120,8 +120,8 @@ class dropout {
          */
         typedef std::vector<std::vector<T>> weights_t;
 
-        dropout(double probability, const Rng& rng_lvalue, T dropout_value = 0.0) : prob(probability), rng(rng_lvalue), dist(0.0, 1.0), value(dropout_value) {}
-        dropout(double probability, Rng&& rng_rvalue, T dropout_value = 0.0) : prob(probability), rng(std::move(rng_rvalue)), dist(0.0, 1.0), value(dropout_value) {}
+        dropout(double probability, const Rng& rng_lvalue, T dropout_value = 0.0) : rng(rng_lvalue), prob(probability), dist(0.0, 1.0), value(dropout_value) {}
+        dropout(double probability, Rng&& rng_rvalue, T dropout_value = 0.0) : rng(std::move(rng_rvalue)), prob(probability), dist(0.0, 1.0), value(dropout_value) {}
 
         dropout(const dropout& other) = default;
         dropout(dropout&& other) = default;
