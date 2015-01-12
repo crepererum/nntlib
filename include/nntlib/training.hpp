@@ -41,6 +41,10 @@ class batch_template {
             fround = callback;
         }
 
+        virtual void callback_batch(func_callback_batch_t callback) {
+            fbatch = callback;
+        }
+
     protected:
         template <typename Net, typename InputIt1, typename InputIt2, typename UpdateHook>
         void train_impl(Net& net, InputIt1 x_first, InputIt1 x_last, InputIt2 y_first, InputIt2 y_last, UpdateHook& update_hook) {
