@@ -208,7 +208,7 @@ class lbfgs : public _::batch_template<T> {
                     history.emplace_back(weights_current - weights_last, update_current - update_last);
                 }
 
-                matrix_t id = gen_id(update_current.rows());
+                auto id = matrix_t::Identity(update_current.rows(), update_current.rows());
                 matrix_t bk = id;
                 for (const auto& entry : history) {
                     T norm = (entry.yk.transpose() * entry.sk)(0, 0);
@@ -268,16 +268,6 @@ class lbfgs : public _::batch_template<T> {
                 }
             });
             return update;
-        }
-
-        matrix_t gen_id(std::size_t size) {
-            matrix_t id(size, size);
-            for (std::size_t i = 0; i < size; ++i) {
-                for (std::size_t j = 0; j < size; ++j) {
-                    id(i, j) = (i == j) ? 1.0 : 0.0;
-                }
-            }
-            return id;
         }
 
         struct history_entry {
