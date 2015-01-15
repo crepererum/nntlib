@@ -68,8 +68,9 @@ int main() {
     tm.train(net, trainInputBegin, trainInputEnd, trainOutputBegin, trainOutputEnd);
     std::cout << "DONE" << std::endl << std::endl;
 
+    auto cache = net.allocate_state();
     for (std::size_t i : test) {
-        auto out = net.forward(input[i].begin(), input[i].end());
+        auto& out = net.forward(input[i].begin(), input[i].end(), cache);
         std::cout << output[i][0] << " " << out[0] << std::endl;
     }
 }

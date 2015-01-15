@@ -12,7 +12,7 @@ int main() {
     std::random_device rd;
     std::mt19937 rng(rd());
 
-    nntlib::layer::dropout<double> l1(0.2, rng);
+    nntlib::layer::dropout<double> l1(10, 0.2, rng);
     nntlib::layer::fully_connected<nntlib::activation::tanh<double>> l2(10, 30, rng);
     nntlib::layer::fully_connected<nntlib::activation::tanh<double>> l3(30, 1, rng);
 
@@ -70,15 +70,15 @@ int main() {
         auto iFuncInput = std::bind(iFunc, std::placeholders::_1, std::ref(input));
         combTestInputBegin.push_back(nntlib::iterator::make_transform(test.begin(), iFuncInput));
         combTestInputEnd.push_back(nntlib::iterator::make_transform(test.end(), iFuncInput));
-        combTrainInputBegin.push_back(nntlib::iterator::make_transform(test.begin(), iFuncInput));
-        combTrainInputEnd.push_back(nntlib::iterator::make_transform(test.end(), iFuncInput));
+        combTrainInputBegin.push_back(nntlib::iterator::make_transform(train.begin(), iFuncInput));
+        combTrainInputEnd.push_back(nntlib::iterator::make_transform(train.end(), iFuncInput));
     }
 
     auto iFuncOutput = std::bind(iFunc, std::placeholders::_1, std::ref(output));
     nntlib::iterator::combine<double> combTestOutputBegin(nntlib::iterator::make_transform(test.begin(), iFuncOutput));
     nntlib::iterator::combine<double> combTestOutputEnd(nntlib::iterator::make_transform(test.end(), iFuncOutput));
-    nntlib::iterator::combine<double> combTrainOutputBegin(nntlib::iterator::make_transform(test.begin(), iFuncOutput));
-    nntlib::iterator::combine<double> combTrainOutputEnd(nntlib::iterator::make_transform(test.end(), iFuncOutput));
+    nntlib::iterator::combine<double> combTrainOutputBegin(nntlib::iterator::make_transform(train.begin(), iFuncOutput));
+    nntlib::iterator::combine<double> combTrainOutputEnd(nntlib::iterator::make_transform(train.end(), iFuncOutput));
 
     std::cout << "Train:" << std::endl;
     typedef nntlib::training::batch<double> train_method_t;

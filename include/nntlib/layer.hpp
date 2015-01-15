@@ -27,6 +27,7 @@ class fully_connected {
         /* Weight matrix.
          */
         typedef std::vector<std::vector<T>> weights_t;
+        typedef std::vector<T> state_t;
 
         fully_connected(std::size_t n_input, std::size_t n_output, Rng& rng) : weights(n_output) {
             T width = 0.2 / static_cast<T>(n_input + 1);
@@ -47,14 +48,15 @@ class fully_connected {
         fully_connected& operator=(const fully_connected& other) = default;
         fully_connected& operator=(fully_connected&& other) = default;
 
+        state_t allocate_state() const {
+            return state_t(weights.size());
+        }
+
         template <typename InputIt>
-        std::vector<T> forward(InputIt x_first, InputIt x_last) const {
-            std::vector<T> output(weights.size());
-            std::transform(weights.begin(), weights.end(), output.begin(), [&](const std::vector<T> wj){
+        void forward(InputIt x_first, InputIt x_last, state_t& state) const {
+            std::transform(weights.begin(), weights.end(), state.begin(), [&](const std::vector<T> wj){
                 return Activation::f(calc_netj(x_first, x_last, wj)); // = oj
             });
-
-            return output;
         }
 
         template <typename InputIt>
@@ -119,9 +121,10 @@ class dropout {
         /* Weight matrix. Will be empty.
          */
         typedef std::vector<std::vector<T>> weights_t;
+        typedef std::vector<T> state_t;
 
-        dropout(double probability, const Rng& rng_lvalue, T dropout_value = 0.0) : rng(rng_lvalue), prob(probability), dist(0.0, 1.0), value(dropout_value) {}
-        dropout(double probability, Rng&& rng_rvalue, T dropout_value = 0.0) : rng(std::move(rng_rvalue)), prob(probability), dist(0.0, 1.0), value(dropout_value) {}
+        dropout(std::size_t iosize, double probability, const Rng& rng_lvalue, T dropout_value = 0.0) : size(iosize), rng(rng_lvalue), prob(probability), dist(0.0, 1.0), value(dropout_value) {}
+        dropout(std::size_t iosize, double probability, Rng&& rng_rvalue, T dropout_value = 0.0) : size(iosize), rng(std::move(rng_rvalue)), prob(probability), dist(0.0, 1.0), value(dropout_value) {}
 
         dropout(const dropout& other) = default;
         dropout(dropout&& other) = default;
@@ -129,14 +132,15 @@ class dropout {
         dropout& operator=(const dropout& other) = default;
         dropout& operator=(dropout&& other) = default;
 
+        state_t allocate_state() const {
+            return state_t(size);
+        }
+
         template <typename InputIt>
-        std::vector<T> forward(InputIt x_first, InputIt x_last) const {
-            std::vector<T> output{};
-            std::transform(x_first, x_last, std::back_inserter(output), [&](T xi){
+        void forward(InputIt x_first, InputIt x_last, state_t& state) const {
+            std::transform(x_first, x_last, state.begin(), [&](T xi){
                 return dist(rng) >= prob ? xi : value;
             });
-
-            return output;
         }
 
         template <typename InputIt>
@@ -151,6 +155,7 @@ class dropout {
         }
 
     private:
+        std::size_t size;
         mutable Rng rng;
         double prob;
         mutable std::uniform_real_distribution<double> dist;
