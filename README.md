@@ -16,6 +16,8 @@ The following activation functions can be used:
 
  - Identity
  - Sigmoid
+ - Softmax
+ - Softplus
  - TanH
 
 ### Loss Functions

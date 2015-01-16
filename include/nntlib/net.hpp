@@ -75,7 +75,7 @@ class net<T, Loss, LayersLast> {
         template <typename InputIt1, typename InputIt2, typename State, typename Error, typename Weights, int N = 0>
         std::pair<std::vector<T>&, Weights&> backward(InputIt1 x_first, InputIt1 x_last, InputIt2 t_first, InputIt2 t_last, State& state, Error& error_mem, Weights& gradient) const {
             std::vector<T>& y = std::get<N>(state);
-            last.forward(x_first, x_last, y);
+            auto cache = last.forward(x_first, x_last, y);
 
             std::vector<T>& error = std::get<N + 1>(error_mem);
             auto it = y.begin();
@@ -88,7 +88,7 @@ class net<T, Loss, LayersLast> {
                 ++t_first;
             }
 
-            last.backward(x_first, x_last, error, std::get<N>(error_mem), std::get<N>(gradient));
+            last.backward(x_first, x_last, error, std::get<N>(error_mem), std::get<N>(gradient), cache);
             return std::make_pair(std::ref(std::get<N>(error_mem)), std::ref(gradient));
         }
 
@@ -154,10 +154,10 @@ class net<T, Loss, LayersHead, LayersTail...> {
         template <typename InputIt1, typename InputIt2, typename State, typename Error, typename Weights, int N = 0>
         std::pair<std::vector<T>&, Weights&> backward(InputIt1 x_first, InputIt1 x_last, InputIt2 t_first, InputIt2 t_last, State& state, Error& error_mem, Weights& gradient) const {
             std::vector<T>& x_next = std::get<N>(state);
-            head.forward(x_first, x_last, x_next);
+            auto cache = head.forward(x_first, x_last, x_next);
 
             auto fix_tail = tail.template backward<decltype(x_next.begin()), InputIt2, State, Error, Weights, N + 1>(x_next.begin(), x_next.end(), t_first, t_last, state, error_mem, gradient);
-            head.backward(x_first, x_last, fix_tail.first, std::get<N>(error_mem), std::get<N>(gradient));
+            head.backward(x_first, x_last, fix_tail.first, std::get<N>(error_mem), std::get<N>(gradient), cache);
             return std::make_pair(std::ref(std::get<N>(error_mem)), std::ref(gradient));
         }
 

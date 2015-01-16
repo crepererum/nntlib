@@ -73,19 +73,27 @@ class fully_connected {
         }
 
         template <typename InputIt>
-        void forward(InputIt x_first, InputIt x_last, state_t& state) const {
+        Activation forward(InputIt x_first, InputIt x_last, state_t& state) const {
+            Activation activation;
+
             std::transform(weights.begin(), weights.end(), state.begin(), [&](const std::vector<T> wj){
-                return Activation::f(calc_netj(x_first, x_last, wj)); // = oj
+                return activation.f1(calc_netj(x_first, x_last, wj)); // = oj
             });
+
+            std::transform(state.begin(), state.end(), state.begin(), [&](T x){
+                return activation.f2(x);
+            });
+
+            return activation;
         }
 
         template <typename InputIt>
-        void backward(InputIt x_first, InputIt x_last, const std::vector<T>& prev_error, state_t& error_mem, weights_t& gradient) const {
+        void backward(InputIt x_first, InputIt x_last, const std::vector<T>& prev_error, state_t& error_mem, weights_t& gradient, Activation activation) const {
             std::fill(error_mem.begin(), error_mem.end(), 0.0);
 
             for (std::size_t j = 0; j < size_out(); ++j) {
                 T de_doj = prev_error[j];
-                T doj_dnetj = Activation::df(calc_netj(x_first, x_last, weights[j]));
+                T doj_dnetj = activation.df(calc_netj(x_first, x_last, weights[j]));
                 T dj = de_doj * doj_dnetj;
 
                 std::vector<T>& gradientj = gradient[j];
@@ -168,14 +176,16 @@ class dropout {
         }
 
         template <typename InputIt>
-        void forward(InputIt x_first, InputIt x_last, state_t& state) const {
+        nntlib::utils::undef forward(InputIt x_first, InputIt x_last, state_t& state) const {
             std::transform(x_first, x_last, state.begin(), [&](T xi){
                 return dist(rng) >= prob ? xi : value;
             });
+
+            return nntlib::utils::undef{};
         }
 
         template <typename InputIt>
-        void backward(InputIt _x_first, InputIt _x_last, const std::vector<T>& prev_error, state_t& error_mem, weights_t& _gradient) const {
+        void backward(InputIt _x_first, InputIt _x_last, const std::vector<T>& prev_error, state_t& error_mem, weights_t& _gradient, nntlib::utils::undef) const {
             std::copy(prev_error.begin(), prev_error.end(), error_mem.begin());
         }
 
