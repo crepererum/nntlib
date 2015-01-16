@@ -49,7 +49,9 @@ class batch_template {
         template <typename Net, typename InputIt1, typename InputIt2, typename UpdateHook>
         void train_impl(Net& net, InputIt1 x_first, InputIt1 x_last, InputIt2 y_first, InputIt2 y_last, UpdateHook& update_hook) {
             std::size_t n = static_cast<std::size_t>(std::distance(x_first, x_last));
-            auto cache = net.allocate_state();
+            auto cache_state = net.allocate_state();
+            auto cache_error = net.allocate_error_storage();
+            auto cache_gradient = net.allocate_delta_storage();
 
             for (std::size_t round = 0; round < rounds; ++round) {
                 T round_factor = ffactor(round);
@@ -65,7 +67,7 @@ class batch_template {
                     auto error_and_gradients = net.backward(
                         x_iter->begin(), x_iter->end(),
                         y_iter->begin(), y_iter->end(),
-                        cache
+                        cache_state, cache_error, cache_gradient
                     );
                     auto& gradients = error_and_gradients.second;
 

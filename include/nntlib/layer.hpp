@@ -48,8 +48,28 @@ class fully_connected {
         fully_connected& operator=(const fully_connected& other) = default;
         fully_connected& operator=(fully_connected&& other) = default;
 
+        std::size_t size_in() const {
+            return weights[0].size() - 1;
+        }
+
+        std::size_t size_out() const {
+            return weights.size();
+        }
+
         state_t allocate_state() const {
-            return state_t(weights.size());
+            return state_t(size_out());
+        }
+
+        weights_t allocate_delta_storage() const {
+            weights_t storage;
+            for (const auto& w : weights) {
+                storage.emplace_back(w.size());
+            }
+            return storage;
+        }
+
+        state_t allocate_error_storage() const {
+            return state_t(size_in());
         }
 
         template <typename InputIt>
@@ -60,29 +80,24 @@ class fully_connected {
         }
 
         template <typename InputIt>
-        std::pair<std::vector<T>, weights_t> backward(InputIt x_first, InputIt x_last, const std::vector<T>& prev_error) const {
-            weights_t gradient;
-            std::vector<T> error(weights[0].size() - 1);
+        void backward(InputIt x_first, InputIt x_last, const std::vector<T>& prev_error, state_t& error_mem, weights_t& gradient) const {
+            std::fill(error_mem.begin(), error_mem.end(), 0.0);
 
-            for (std::size_t j = 0; j < weights.size(); ++j) {
+            for (std::size_t j = 0; j < size_out(); ++j) {
                 T de_doj = prev_error[j];
                 T doj_dnetj = Activation::df(calc_netj(x_first, x_last, weights[j]));
                 T dj = de_doj * doj_dnetj;
 
-                std::vector<T> gradientj(weights[j].size());
+                std::vector<T>& gradientj = gradient[j];
                 gradientj[0] = dj;
                 std::transform(x_first, x_last, std::next(gradientj.begin()), [&](T xi){
                     return dj * xi;
                 });
 
-                gradient.emplace_back(std::move(gradientj));
-
-                for (std::size_t i = 0; i < error.size(); ++i) {
-                    error[i] += dj * weights[j][i + 1];
+                for (std::size_t i = 0; i < error_mem.size(); ++i) {
+                    error_mem[i] += dj * weights[j][i + 1];
                 }
             }
-
-            return std::make_pair(std::move(error), std::move(gradient));
         }
 
         /* Update layer using a delta.
@@ -132,7 +147,23 @@ class dropout {
         dropout& operator=(const dropout& other) = default;
         dropout& operator=(dropout&& other) = default;
 
+        std::size_t size_in() const {
+            return size;
+        }
+
+        std::size_t size_out() const {
+            return size;
+        }
+
         state_t allocate_state() const {
+            return state_t(size);
+        }
+
+        weights_t allocate_delta_storage() const {
+            return weights_t{};
+        }
+
+        state_t allocate_error_storage() const {
             return state_t(size);
         }
 
@@ -144,8 +175,8 @@ class dropout {
         }
 
         template <typename InputIt>
-        std::pair<std::vector<T>, weights_t> backward(InputIt _x_first, InputIt _x_last, const std::vector<T>& prev_error) const {
-            return std::make_pair(prev_error, weights_t{});
+        void backward(InputIt _x_first, InputIt _x_last, const std::vector<T>& prev_error, state_t& error_mem, weights_t& _gradient) const {
+            std::copy(prev_error.begin(), prev_error.end(), error_mem.begin());
         }
 
         void update(const weights_t& _delta) {/* noop */}
