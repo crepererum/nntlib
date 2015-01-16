@@ -296,19 +296,28 @@ struct transform {
     }
 
     ~transform() {
-        if (current) {
+        if (current != nullptr) {
             cleanup<fresult_t, CleanupPointers>();
         }
     }
 
     transform& operator=(const transform& other) {
+        if (current != nullptr) {
+            cleanup<fresult_t, CleanupPointers>();
+        }
+
         iter = other.iter;
         function = other.function;
         current = nullptr;
+
         return *this;
     }
 
     transform& operator=(transform&& other) {
+        if (current != nullptr) {
+            cleanup<fresult_t, CleanupPointers>();
+        }
+
         iter = other.iter;
         function = other.function;
         current = other.current;
@@ -321,7 +330,9 @@ struct transform {
     /* Increments underlying iterator.
      */
     transform& operator++() {
-        current = nullptr;
+        if (current != nullptr) {
+            cleanup<fresult_t, CleanupPointers>();
+        }
 
         ++iter;
 
