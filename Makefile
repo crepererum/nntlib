@@ -2,7 +2,7 @@ BUILDDIR ?= target
 CLDOC ?= cldoc
 CXX ?= g++
 CXXFLAGS = -std=c++14 -Iinclude
-CXXFLAGS_EXTRA_EXAMPLES = -O2
+CXXFLAGS_EXTRA_EXAMPLES = -O3 -ffast-math
 EXAMPLES = $(addprefix $(BUILDDIR)/, $(basename $(wildcard examples/*.cpp)))
 
 all: examples doc
