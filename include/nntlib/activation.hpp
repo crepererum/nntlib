@@ -150,7 +150,58 @@ struct tanh {
     /* df(x) = 1 - f(x)^2
      */
     static constexpr T df(T x) {
-        return 1.0 - f1(x) * f1(x);
+        T y = f1(x);
+        return 1.0 - y * y;
+    }
+};
+
+/* TL function.
+ * @T Floating point type which is used for the entire neural network.
+ * @N Steepness
+ *
+ * This implements "Tanh-like Activation Function Implementation for
+ * High-performance Digital Neural System" by Salvatore Marra,
+ * Maria A. lachino and Francesco C. Morabito, 2006
+ */
+template <typename T = double, int N = 1>
+struct tl {
+    /* f1(x) = tl_N(x)
+     */
+    static constexpr T f1(T x) {
+        T sgn = x >= 0.0 ? 1.0 : -1.0;
+        T abs = std::abs(x);
+        constexpr T power_2_n = static_cast<T>(1ull << N);
+        T power_2_n_times_abs = power_2_n * abs;
+        T floor = std::floor(power_2_n_times_abs);
+
+        return sgn
+            *
+            (
+                1.0
+                +
+                    1.0 / static_cast<T>(1ull << static_cast<std::size_t>(floor))
+                    *
+                    (
+                        (
+                            power_2_n_times_abs - floor
+                        ) / 2.0
+                        -
+                        1.0
+                    )
+            );
+    }
+
+    /* f2(x) = x
+     */
+    static constexpr T f2(T x) {
+        return x;
+    }
+
+    /* df(x) = 1 - f(x)^2
+     */
+    static constexpr T df(T x) {
+        T y = f1(x);
+        return 1.0 - y * y;
     }
 };
 

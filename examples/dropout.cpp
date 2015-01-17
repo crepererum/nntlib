@@ -13,8 +13,8 @@ int main() {
     std::mt19937 rng(rd());
 
     nntlib::layer::dropout<double> l1(10, 0.2, rng);
-    nntlib::layer::fully_connected<nntlib::activation::tanh<double>> l2(10, 30, rng);
-    nntlib::layer::fully_connected<nntlib::activation::tanh<double>> l3(30, 1, rng);
+    nntlib::layer::fully_connected<nntlib::activation::tl<double>> l2(10, 30, rng);
+    nntlib::layer::fully_connected<nntlib::activation::tl<double>> l3(30, 1, rng);
 
     auto net = nntlib::make_net<double, nntlib::loss::mse<double>>(l1, l2, l3);
     std::uniform_real_distribution<double> dist(0, 1);
