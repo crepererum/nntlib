@@ -54,13 +54,13 @@ class combine_helper : public combine_helper_base<T> {
 };
 
 template <typename T>
-using combine_helper_vec = std::vector<std::unique_ptr<combine_helper_base<T>>>;
+using combine_helper_vec = std::shared_ptr<std::vector<std::unique_ptr<combine_helper_base<T>>>>;
 
 template <typename T>
 combine_helper_vec<T> combine_helper_vec_cpy(const combine_helper_vec<T>& orig) {
-    combine_helper_vec<T> cpy;
-    for (const auto& element : orig) {
-        cpy.emplace_back(element->copy());
+    auto cpy = std::make_shared<std::vector<std::unique_ptr<combine_helper_base<T>>>>(orig->size());
+    for (std::size_t i = 0; i < orig->size(); ++i) {
+        (*cpy)[i] = (*orig)[i]->copy();
     }
     return std::move(cpy);
 }
@@ -68,13 +68,13 @@ combine_helper_vec<T> combine_helper_vec_cpy(const combine_helper_vec<T>& orig) 
 template <typename T>
 class combine_mapper {
     public:
-        combine_mapper(combine_helper_vec<T>&& hidden_helpers, std::size_t internal_pos) : helpers(std::move(hidden_helpers)), pos(internal_pos) {}
+        combine_mapper(const combine_helper_vec<T>& hidden_helpers, std::size_t internal_pos) : helpers(hidden_helpers), pos(internal_pos) {}
 
-        combine_mapper(const combine_mapper& other) : helpers(combine_helper_vec_cpy(other.helpers)), pos(other.pos) {}
+        combine_mapper(const combine_mapper& other) : helpers(other.helpers), pos(other.pos) {}
         combine_mapper(combine_mapper&& other) = default;
 
         combine_mapper& operator=(const combine_mapper<T>& other) {
-            this->helpers = combine_helper_vec_cpy(other.helpers);
+            this->helper = other.helpers;
             this->pos = other.pos;
         }
         combine_mapper& operator=(combine_mapper<T>&& other) = default;
@@ -85,18 +85,18 @@ class combine_mapper {
         }
 
         T& operator*() {
-            return helpers[pos]->deref();
+            return (*helpers)[pos]->deref();
         }
 
         T* operator->() {
-            return &(helpers[pos]->deref());
+            return &((*helpers)[pos]->deref());
         }
 
         bool operator==(const combine_mapper& other) const {
             if (this->is_end()) {
                 return other.is_end();
             } else {
-                return !other.is_end() && this->helpers[this->pos]->eq(other.helpers[other.pos]);
+                return !other.is_end() && (*this->helpers)[this->pos]->eq((*other.helpers)[other.pos]);
             }
         }
 
@@ -109,30 +109,30 @@ class combine_mapper {
         std::size_t pos;
 
         bool is_end() const {
-            return pos >= helpers.size();
+            return !helpers || (pos >= helpers->size());
         }
 };
 
 template <typename T>
 class combine_container {
     public:
-        combine_container() = default;
+        combine_container() : helpers(new std::vector<std::unique_ptr<combine_helper_base<T>>>{}) {}
 
         template <typename... Iters>
-        combine_container(Iters... iters) {
+        combine_container(Iters... iters) : helpers(new std::vector<std::unique_ptr<combine_helper_base<T>>>{}) {
             add_all<Iters...>::f(*this, iters...);
         }
 
-        combine_container(const combine_container& other) : helpers(combine_helper_vec_cpy(other.helpers)) {}
+        combine_container(const combine_container& other) : helpers(other.helpers) {}
         combine_container(combine_container&& other) = default;
 
         combine_container& operator=(const combine_container<T>& other) {
-            this->helpers = combine_helper_vec_cpy(other.helpers);
+            this->helpers = other.helpers;
         }
         combine_container& operator=(combine_container<T>&& other) = default;
 
         combine_mapper<T> begin() const {
-            return combine_mapper<T>(combine_helper_vec_cpy(helpers), 0);
+            return combine_mapper<T>(helpers, 0);
         }
 
         combine_mapper<T> end() const {
@@ -140,24 +140,34 @@ class combine_container {
         }
 
         T& operator[](std::size_t i) const {
-            return helpers[i]->deref();
+            return (*helpers)[i]->deref();
         }
 
         template <typename Iter>
         void push_back(Iter it) {
-            helpers.emplace_back(new combine_helper<T, Iter>(it));
+            // avoid effect on other iterators
+            if (!helpers.unique()) {
+                helpers = combine_helper_vec_cpy(helpers);
+            }
+
+            helpers->emplace_back(new combine_helper<T, Iter>(it));
         }
 
         void incr_all() {
-            for (auto& h : helpers) {
+            // avoid effect on other iterators
+            if (!helpers.unique()) {
+                helpers = combine_helper_vec_cpy(helpers);
+            }
+
+            for (auto& h : (*helpers)) {
                 h->incr();
             }
         }
 
         bool eq(const combine_container& other) const {
-            if (this->helpers.size() == other.helpers.size()) {
-                for (std::size_t i = 0; i < this->helpers.size(); ++i) {
-                    if (!this->helpers[i]->eq(other.helpers[i])) {
+            if (this->helpers->size() == other.helpers->size()) {
+                for (std::size_t i = 0; i < this->helpers->size(); ++i) {
+                    if (!(*this->helpers)[i]->eq((*other.helpers)[i])) {
                         return false;
                     }
                 }
