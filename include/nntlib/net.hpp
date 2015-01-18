@@ -57,7 +57,7 @@ class net<T, Loss, LayersLast> {
         template <typename InputIt, typename State, int N = 0>
         std::vector<T>& forward(InputIt x_first, InputIt x_last, State& state) const {
             std::vector<T>& y = std::get<N>(state);
-            last.forward(x_first, x_last, y);
+            last.forward(x_first, x_last, y, false);
             return y;
         }
 
@@ -75,7 +75,7 @@ class net<T, Loss, LayersLast> {
         template <typename InputIt1, typename InputIt2, typename State, typename Error, typename Weights, int N = 0>
         std::pair<std::vector<T>&, Weights&> backward(InputIt1 x_first, InputIt1 x_last, InputIt2 t_first, InputIt2 t_last, State& state, Error& error_mem, Weights& gradient) const {
             std::vector<T>& y = std::get<N>(state);
-            auto cache = last.forward(x_first, x_last, y);
+            auto cache = last.forward(x_first, x_last, y, true);
 
             std::vector<T>& error = std::get<N + 1>(error_mem);
             auto it = y.begin();
@@ -136,7 +136,7 @@ class net<T, Loss, LayersHead, LayersTail...> {
         template <typename InputIt, typename State, int N = 0>
         std::vector<T>& forward(InputIt x_first, InputIt x_last, State& state) const {
             std::vector<T>& x_next = std::get<N>(state);
-            head.forward(x_first, x_last, x_next);
+            head.forward(x_first, x_last, x_next, false);
             return tail.template forward<decltype(x_next.begin()), State, N + 1>(x_next.begin(), x_next.end(), state);
         }
 
@@ -154,7 +154,7 @@ class net<T, Loss, LayersHead, LayersTail...> {
         template <typename InputIt1, typename InputIt2, typename State, typename Error, typename Weights, int N = 0>
         std::pair<std::vector<T>&, Weights&> backward(InputIt1 x_first, InputIt1 x_last, InputIt2 t_first, InputIt2 t_last, State& state, Error& error_mem, Weights& gradient) const {
             std::vector<T>& x_next = std::get<N>(state);
-            auto cache = head.forward(x_first, x_last, x_next);
+            auto cache = head.forward(x_first, x_last, x_next, true);
 
             auto fix_tail = tail.template backward<decltype(x_next.begin()), InputIt2, State, Error, Weights, N + 1>(x_next.begin(), x_next.end(), t_first, t_last, state, error_mem, gradient);
             head.backward(x_first, x_last, fix_tail.first, std::get<N>(error_mem), std::get<N>(gradient), cache);

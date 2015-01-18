@@ -73,7 +73,7 @@ class fully_connected {
         }
 
         template <typename InputIt>
-        Activation forward(InputIt x_first, InputIt x_last, state_t& state) const {
+        Activation forward(InputIt x_first, InputIt x_last, state_t& state, bool _training) const {
             Activation activation;
 
             std::transform(weights.begin(), weights.end(), state.begin(), [&](const std::vector<T> wj){
@@ -176,9 +176,9 @@ class dropout {
         }
 
         template <typename InputIt>
-        nntlib::utils::undef forward(InputIt x_first, InputIt x_last, state_t& state) const {
+        nntlib::utils::undef forward(InputIt x_first, InputIt x_last, state_t& state, bool training) const {
             std::transform(x_first, x_last, state.begin(), [&](T xi){
-                return dist(rng) >= prob ? xi : value;
+                return (!training || (dist(rng) >= prob)) ? xi : value;
             });
 
             return nntlib::utils::undef{};
