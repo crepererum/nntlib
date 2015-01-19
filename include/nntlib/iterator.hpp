@@ -247,13 +247,13 @@ class combine {
 
         /* Yields a container reference that containes the current state of all iterators.
          */
-        _::combine_container<T>& operator*() {
+        _::combine_container<T>& operator*() const {
             return container;
         }
 
         /* Yields a container pointer that containes the current state of all iterators.
          */
-        _::combine_container<T>* operator->() {
+        _::combine_container<T>* operator->() const {
             return &container;
         }
 
@@ -270,7 +270,7 @@ class combine {
         }
 
     private:
-        _::combine_container<T> container;
+        mutable _::combine_container<T> container;
 };
 
 /* Transform the results of one iterator using a function
@@ -285,7 +285,7 @@ struct transform {
 
     Iter iter;
     Function function;
-    Target* current;
+    mutable Target* current;
 
     typedef decltype(std::declval<Function>()(*std::declval<Iter>())) fresult_t;
     typedef std::input_iterator_tag iterator_category;
@@ -351,7 +351,7 @@ struct transform {
 
     /* Call iter.operator* and converts the result using the stored function.
      */
-    reference operator*() {
+    reference operator*() const {
         if (!current) {
             update_current<fresult_t>();
         }
@@ -360,7 +360,7 @@ struct transform {
 
     /* Call iter.operator* and converts the result using the stored function.
      */
-    pointer operator->() {
+    pointer operator->() const {
         if (!current) {
             update_current<fresult_t>();
         }
@@ -381,19 +381,19 @@ struct transform {
 
     template <typename F>
     typename std::enable_if<std::is_pointer<F>::value>::type
-    update_current() {
+    update_current() const {
         current = function(*iter);
     }
 
     template <typename F>
     typename std::enable_if<std::is_reference<F>::value>::type
-    update_current() {
+    update_current() const {
         current = &function(*iter);
     }
 
     template <typename F>
     typename std::enable_if<!std::is_pointer<F>::value && !std::is_reference<F>::value>::type
-    update_current() {
+    update_current() const {
         current = new Target(function(*iter));
     }
 
