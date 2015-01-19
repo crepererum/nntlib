@@ -1,5 +1,8 @@
 #pragma once
 
+#include "utils.hpp"
+
+#include <iterator>
 #include <memory>
 #include <type_traits>
 #include <vector>
@@ -277,22 +280,23 @@ class combine {
  * @Iter source iterator.
  * @Function function that maps *iter -> Target:
  * @Target return type of the function.
+ * @IteratorTag Iterator tag of the iterator.
  * @CleanupPointers if Function returns pointers, should we delete them?
  */
-template <typename Iter, typename Function, typename Target, bool CleanupPointers = false>
-struct transform {
+template <typename Iter, typename Function, typename Target, bool CleanupPointers, typename IteratorTag>
+struct transform;
+
+template <typename Iter, typename Function, typename Target, bool CleanupPointers>
+struct transform<Iter, Function, Target, CleanupPointers, nntlib::utils::undef> {
     static_assert(!std::is_reference<Target>::value && !std::is_pointer<Target>::value, "Target must not be a reference or pointer!");
+
+    typedef decltype(std::declval<Function>()(*std::declval<Iter>())) fresult_t;
+    typedef Target* pointer;
+    typedef Target& reference;
 
     Iter iter;
     Function function;
     mutable Target* current;
-
-    typedef decltype(std::declval<Function>()(*std::declval<Iter>())) fresult_t;
-    typedef std::input_iterator_tag iterator_category;
-    typedef std::size_t difference_type;
-    typedef Target value_type;
-    typedef Target* pointer;
-    typedef Target& reference;
 
     /* Creates new transform iterator using a underlying iterator and a function.
      * @i Iterator copy.
@@ -333,18 +337,6 @@ struct transform {
         current = other.current;
 
         other.current = nullptr;
-
-        return *this;
-    }
-
-    /* Increments underlying iterator.
-     */
-    transform& operator++() {
-        if (current != nullptr) {
-            cleanup<fresult_t, CleanupPointers>();
-        }
-
-        ++iter;
 
         return *this;
     }
@@ -424,6 +416,174 @@ struct transform {
     }
 };
 
+
+template <typename Iter, typename Function, typename Target, bool CleanupPointers>
+struct transform<Iter, Function, Target, CleanupPointers, std::input_iterator_tag> : public transform<Iter, Function, Target, CleanupPointers, nntlib::utils::undef> {
+    typedef transform<Iter, Function, Target, CleanupPointers, nntlib::utils::undef> parent;
+
+    typedef decltype(std::declval<Function>()(*std::declval<Iter>())) fresult_t;
+    typedef std::input_iterator_tag iterator_category;
+    typedef std::size_t difference_type;
+    typedef Target value_type;
+    typedef Target* pointer;
+    typedef Target& reference;
+
+    using parent::transform;
+
+    using parent::operator=;
+
+    /* Increments underlying iterator.
+     */
+    transform& operator++() {
+        if (parent::current != nullptr) {
+            parent::template cleanup<fresult_t, CleanupPointers>();
+        }
+
+        ++parent::iter;
+
+        return *this;
+    }
+
+    using parent::operator*;
+    using parent::operator->;
+
+    using parent::operator==;
+    using parent::operator!=;
+};
+
+template <typename Iter, typename Function, typename Target, bool CleanupPointers>
+struct transform<Iter, Function, Target, CleanupPointers, std::forward_iterator_tag> : public transform<Iter, Function, Target, CleanupPointers, std::input_iterator_tag> {
+    typedef transform<Iter, Function, Target, CleanupPointers, std::input_iterator_tag> parent;
+
+    typedef decltype(std::declval<Function>()(*std::declval<Iter>())) fresult_t;
+    typedef std::forward_iterator_tag iterator_category;
+    typedef std::size_t difference_type;
+    typedef Target value_type;
+    typedef Target* pointer;
+    typedef Target& reference;
+
+    using parent::transform;
+    transform() : parent::iter(), parent::function(), parent::current() {}
+
+    using parent::operator=;
+
+    using parent::operator++;
+
+    using parent::operator*;
+    using parent::operator->;
+
+    using parent::operator==;
+    using parent::operator!=;
+};
+
+template <typename Iter, typename Function, typename Target, bool CleanupPointers>
+struct transform<Iter, Function, Target, CleanupPointers, std::bidirectional_iterator_tag> : public transform<Iter, Function, Target, CleanupPointers, std::forward_iterator_tag> {
+    typedef transform<Iter, Function, Target, CleanupPointers, std::forward_iterator_tag> parent;
+
+    typedef decltype(std::declval<Function>()(*std::declval<Iter>())) fresult_t;
+    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef std::size_t difference_type;
+    typedef Target value_type;
+    typedef Target* pointer;
+    typedef Target& reference;
+
+    using parent::transform;
+
+    using parent::operator=;
+
+    using parent::operator++;
+
+    /* Decrements underlying iterator.
+     */
+    transform& operator--() {
+        if (parent::current != nullptr) {
+            parent::template cleanup<fresult_t, CleanupPointers>();
+        }
+
+        --parent::iter;
+
+        return *this;
+    }
+
+    using parent::operator*;
+    using parent::operator->;
+
+    using parent::operator==;
+    using parent::operator!=;
+};
+
+template <typename Iter, typename Function, typename Target, bool CleanupPointers>
+struct transform<Iter, Function, Target, CleanupPointers, std::random_access_iterator_tag> : public transform<Iter, Function, Target, CleanupPointers, std::bidirectional_iterator_tag> {
+    typedef transform<Iter, Function, Target, CleanupPointers, std::bidirectional_iterator_tag> parent;
+
+    typedef decltype(std::declval<Function>()(*std::declval<Iter>())) fresult_t;
+    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef typename std::iterator_traits<Iter>::difference_type difference_type;
+    typedef Target value_type;
+    typedef Target* pointer;
+    typedef Target& reference;
+
+    using parent::transform;
+
+    using parent::operator=;
+
+    using parent::operator++;
+    using parent::operator--;
+
+    transform operator+(difference_type d) {
+        return transform(parent::iter + d, parent::function);
+    }
+
+    transform operator-(difference_type d) {
+        return transform(parent::iter - d, parent::function);
+    }
+
+    transform& operator+=(difference_type d) {
+        parent::iter += d;
+        return *this;
+    }
+
+    transform& operator-=(difference_type d) {
+        parent::iter -= d;
+        return *this;
+    }
+
+    difference_type operator-(transform& other) {
+        return this->iter -  other.iter;
+    }
+
+    using parent::operator*;
+    using parent::operator->;
+
+    reference operator[](difference_type d) {
+        return *transform(parent::iter + d, parent::function);
+    }
+
+    using parent::operator==;
+    using parent::operator!=;
+
+    bool operator<(transform& other) {
+        return this->iter < other.iter;
+    }
+
+    bool operator>(transform& other) {
+        return this->iter > other.iter;
+    }
+
+    bool operator<=(transform& other) {
+        return this->iter <= other.iter;
+    }
+
+    bool operator>=(transform& other) {
+        return this->iter >= other.iter;
+    }
+};
+
+template <typename Iter, typename Function, typename Target, bool CleanupPointers>
+transform<Iter, Function, Target, CleanupPointers, std::random_access_iterator_tag> operator+(typename transform<Iter, Function, Target, CleanupPointers, std::random_access_iterator_tag>::difference_type d, const transform<Iter, Function, Target, CleanupPointers, std::random_access_iterator_tag>& obj) {
+    return transform<Iter, Function, Target, CleanupPointers, std::random_access_iterator_tag>(obj.iter + d, obj.function);
+}
+
 /* Creates new transform iterator. See <transform> for details about parameter.
  */
 template <
@@ -434,10 +594,11 @@ template <
                     decltype(std::declval<Function>()(*std::declval<Iter>()))
                 >::type
         >::type,
-    bool CleanupPointers = false
+    bool CleanupPointers = false,
+    typename IteratorTag = typename std::iterator_traits<Iter>::iterator_category
 >
-transform<Iter, Function, Target, CleanupPointers> make_transform(Iter i, Function f) {
-    return transform<Iter, Function, Target, CleanupPointers>(i, f);
+transform<Iter, Function, Target, CleanupPointers, IteratorTag> make_transform(Iter i, Function f) {
+    return transform<Iter, Function, Target, CleanupPointers, IteratorTag>(i, f);
 }
 
 }
