@@ -247,13 +247,13 @@ class combine {
 
         /* Yields a container reference that containes the current state of all iterators.
          */
-        _::combine_container<T>& operator*() const {
+        const _::combine_container<T>& operator*() const {
             return container;
         }
 
         /* Yields a container pointer that containes the current state of all iterators.
          */
-        _::combine_container<T>* operator->() const {
+        const _::combine_container<T>* operator->() const {
             return &container;
         }
 
@@ -270,7 +270,7 @@ class combine {
         }
 
     private:
-        mutable _::combine_container<T> container;
+        _::combine_container<T> container;
 };
 
 /* Transform the results of one iterator using a function
